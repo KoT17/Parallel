@@ -14,7 +14,7 @@ using namespace chrono;
 #define limit 26666665
 
 bool is_prime(int number);
-void find_primes(bitset<limit> sieve, vector<int> numbers, int index, promise<bitset<limit> > *promise);
+void find_primes(bitset<limit>* sieve, vector<int> numbers, int index);
 
 int main() {
 
@@ -35,19 +35,17 @@ int main() {
   auto start = high_resolution_clock::now();
 
   vector<thread> thrs(8);
-  promise<bitset<limit> > updatedSieve;
-  future<bitset<limit> > future = updatedSieve.get_future();
-  
+
   // Is this a bottle neck due to only spawning one thread at a time?
-  for (int i = 0; i < numbers.size(); i++) {
+  for (int i = 0; i < numbers.size(); i+=8) {
 
     cout << "Number: " << numbers.at(i) << endl;
 
-    thrs[i % 8] = thread(find_primes, sieve, numbers, i, &updatedSieve);
-    //sieve = future.get();
+    for(int j = 0; j < 8; j++)
+      thrs[j] = thread(find_primes, &sieve, numbers, i+j);
 
-    //sieve = future.get();
-    //sieve = future.get();
+    for(int j = 0; j < 8; j++)
+      thrs[j].join();
   }
 
   auto end = high_resolution_clock::now();
@@ -55,27 +53,26 @@ int main() {
   return 0;
 }
 
-void find_primes(bitset<limit> sieve, vector<int> numbers, int index, promise<bitset<limit> > *promise) {
+void find_primes(bitset<limit>* sieve, vector<int> numbers, int index) {
 
   int num = numbers.at(index);
-  if(sieve[index] == 1) {
-    promise->set_value(sieve);
+  if(sieve->test(index) == 1) {
+    cout << "Skipped " << num << endl;
     return;
   }
 
   cout << "Checking number: " << num << endl;
   if(is_prime(num)) {
-    sieve[index] = 0;
+    sieve->set(index, 0);
     cout << "ISPRIME" << endl;
 
-    for (int i = index+1; i < sieve.size(); i++) {
-      if(numbers.at(i) % num == 0)
-        sieve[i] = 1;
+    for (int i = index+1; i < sieve->size(); i++) {
+      if((numbers.at(i) % num) == 0)
+        sieve->set(i,1);
     }
   }
   // Update sieve here
   cout << "Passed sieve on: " << num << endl;
-  promise->set_value(sieve);
 }
 
 bool is_prime(int number) {
