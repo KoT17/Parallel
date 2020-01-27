@@ -3,7 +3,7 @@
 #include <math.h>
 #include <vector>
 #include <atomic>
-#include <queue>
+#include <bits/stdc++.h>
 #include <chrono>
 #include <future>
 #include <string>
@@ -11,80 +11,74 @@
 using namespace std;
 using namespace chrono;
 
+#define limit 26666665
+
 bool is_prime(int number);
-vector<bool> find_primes(vector<bool> sieve, int index);
-vector<bool> update_sieve(vector<bool> sieve, int num);
+void find_primes(bitset<limit> sieve, vector<int> numbers, int index, promise<bitset<limit> > *promise);
 
 int main() {
 
   cout << "hello" << endl;
   int cap = pow(10,8), count = 2;
-  queue<int> numbers;
-  vector<bool> sieve(cap, 0);
+
+  vector<int> numbers;
+  bitset<limit> sieve;
 
   while (count < cap) {
     if(!(count % 2 == 0) && !(count % 3 == 0) && !(count % 5 == 0))
-      numbers.push(count);
+      numbers.push_back(count);
     count++;
   }
   count = 0;
 
-  sieve = update_sieve(sieve, 2);
-  sieve = update_sieve(sieve, 3);
-  sieve = update_sieve(sieve, 5);
-
-
+  cout << numbers.size() << endl;
   auto start = high_resolution_clock::now();
 
   vector<thread> thrs(8);
-
+  promise<bitset<limit> > updatedSieve;
+  future<bitset<limit> > future = updatedSieve.get_future();
   // Is this a bottle neck due to only spawning one thread at a time?
-  while (!numbers.empty()) {
-    int temp = numbers.front();
-    numbers.pop();
-    cout << "Number: " << temp << endl;
-    promise<vector<bool> > updatedSieve;
-    auto future = updatedSieve.get_future();
-    cout << "Passed future" << endl;
-    thrs[count % 8] = thread(find_primes, sieve, temp);
-    thrs[count % 8].join();
+  for (int i = 0; i < numbers.size(); i+=8) {
 
-    sieve = future.get();
-    count++;
+    cout << "Number: " << numbers.at(i) << endl;
+    for (int j = 0; j < 8; j++) {
+      if (i+j >= numbers.size())
+        break;
+      thrs[j] = thread(find_primes, sieve, numbers, i+j, &updatedSieve);
+    }
+    //sieve = future.get();
+    for (int j = 0; j < 8; j++) {
+      thrs[j].join();
+    }
+    //sieve = future.get();
   }
-
 
   auto end = high_resolution_clock::now();
   cout << "Threads executed in " << duration_cast<milliseconds>(end - start).count() << " milliseconds" << endl;
   return 0;
 }
 
-vector<bool> find_primes(vector<bool> sieve, int num) {
+void find_primes(bitset<limit> sieve, vector<int> numbers, int index, promise<bitset<limit> > *promise) {
 
-  if(sieve.at(num) == 1) {
-    return sieve;
+  int num = numbers.at(index);
+  if(sieve[index] == 1) {
+    promise->set_value(sieve);
+    return;
   }
 
   cout << "Checking number: " << num << endl;
   if(is_prime(num)) {
-    sieve.at(num) == 1;
+    sieve[index] = 0;
     cout << "ISPRIME" << endl;
-  }
 
+    for (int i = index+1; i < sieve.size(); i++) {
+      if(numbers.at(i) % num == 0)
+        sieve[i] = 1;
+    }
+  }
   // Update sieve here
-  sieve = update_sieve(sieve, num);
-  return sieve;
-}
-
-vector<bool> update_sieve(vector<bool> sieve, int num) {
-  int temp = num;
-  while (temp < sieve.size()) {
-    if (sieve.at(temp) % num == 0)
-      sieve.at(temp) = 1;
-    temp++;
-  }
   cout << "Passed sieve on: " << num << endl;
-  return sieve;
+  promise->set_value(sieve);
 }
 
 bool is_prime(int number) {

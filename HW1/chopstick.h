@@ -3,6 +3,9 @@
 
 using namespace std;
 
-class chopstick {
+class Chopstick {
+public:
+  mutex mtx;
 
+  Chopstick();
 };
