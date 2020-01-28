@@ -5,6 +5,7 @@
 #include <chrono>
 #include <cstring>
 #include <atomic>
+#include <queue>
 
 #include "chopstick.h"
 #include "philosopher.h"
@@ -20,6 +21,7 @@ int main() {
   vector<Chopstick> sticks(5);
   vector<Philosopher> philo;
   vector<thread> thrs(5);
+  queue<int> pQueue;
 
   keyPressed = 0;
 
@@ -30,18 +32,31 @@ int main() {
     philo.push_back(temp);
   }
 
-  //thread readInput = thread(exitKeyPressed);
-  // Had a temp object beforehand and that resulted in multiple threads modifying variable
   thread press = thread(exitKeyPressed);
 
+  for (int i = 0; i < 5; i++) {
+    thrs[i] = thread(eat, &philo.at(i), &sticks[philo.at(i).left], &sticks[philo.at(i).right]);
+  }
+
+  for (int i = 0; i < 5; i++) {
+    thrs[i].join();
+    pQueue.push(i);
+  }
   while(!keyPressed) {
-    for (int i = 0; i < 5; i++) {
-      thrs[i] = thread(eat, &philo.at(i), &sticks[philo.at(i).left], &sticks[philo.at(i).right]);
+    int popped;
+    while(!pQueue.empty()){
+      popped = pQueue.front();
+      pQueue.pop();
+      thrs[popped] = thread(eat, &philo.at(popped), &sticks[philo.at(popped).left], &sticks[philo.at(popped).right]);
+      popped = pQueue.front();
     }
-    for (int i = 0; i < 5; i++)
+    for (int i = 0; i < 5; i++) {
       thrs[i].join();
+      pQueue.push(i);
+    }
   }
   press.join();
+
   return 0;
 }
 

@@ -28,7 +28,6 @@ int main() {
     philo.push_back(temp);
   }
 
-  // Had a temp object beforehand and that resulted in multiple threads modifying variable
   thread press = thread(exitKeyPressed);
 
   while(!keyPressed) {

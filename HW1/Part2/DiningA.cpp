@@ -28,7 +28,6 @@ int main() {
     philo.push_back(temp);
   }
 
-  // Had a temp object beforehand and that resulted in multiple threads modifying variable
   thread press = thread(exitKeyPressed);
 
   while(!keyPressed) {
@@ -58,7 +57,7 @@ void eat(Philosopher* thinker, Chopstick* left, Chopstick* right) {
   cout << thinker->ID << " is now hungry" << endl;
   left->mtx.lock();
 
-  // This wait allows for the other threads to lock their respective left
+  // This split allows for the other threads to lock their respective left
   // chopstick before picking up their right, causing a deadlock
   right->mtx.lock();
   cout << thinker->ID << " is now eating" << endl;
