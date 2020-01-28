@@ -4,7 +4,6 @@
 #include <math.h>
 #include <vector>
 #include <chrono>
-#include <string>
 
 using namespace std;
 using namespace chrono;
@@ -72,7 +71,7 @@ int main() {
 	file << duration_cast<milliseconds>(end - start).count() << "ms" << " " << totalCount << " " << sumOfPrimes << endl;
 	for (int i = 9; i > -1; i--)
 		file << lastPrimes.at(i) << " ";
-	file << endl << endl;
+	file << endl;
 	return 0;
 }
 
