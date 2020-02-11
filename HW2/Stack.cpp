@@ -1,10 +1,9 @@
 #include <thread>
 #include <iostream>
-#include <fstream>
 #include <math.h>
-#include <vector>
 #include <atomic>
 #include <chrono>
+#include <vector>
 
 using namespace std;
 using namespace chrono;
