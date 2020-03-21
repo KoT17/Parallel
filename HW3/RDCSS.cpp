@@ -21,22 +21,22 @@ public:
 };
 
 
-uintptr_t CAS1(atomic<uintptr_t> *address, uintptr_t old, uintptr_t n) { // GOOD
-  atomic_compare_exchange_strong(address, &old, n); // Can be  address.compare_exchange_strong()
+uintptr_t CAS1(atomic<uintptr_t> *address, uintptr_t old, uintptr_t n) {
+  atomic_compare_exchange_strong(address, &old, n);
   return old;
 }
 
-bool isDescriptor(uintptr_t address) { // use reinterpret_cast to optional object GOOD
-  //cout << "D: (isDescriptor) Address is: " << address << endl; // May need use reinterpret_cast in to uintptr_t in isDescriptor
+bool isDescriptor(uintptr_t address) {
   if (address & 1)
     return true;
   return false;
 }
 
 void Complete (Descriptor *des) {
-  uintptr_t temp = atomic_load(des->a1);// load control address Does it need to be a shared pointer
+  uintptr_t temp = atomic_load(des->a1);
+
   if (temp == des->o1) {
-    CAS1(des->a2, (reinterpret_cast<uintptr_t>(des) | 0x01), des->newV); // Change to 0x01 just in case
+    CAS1(des->a2, (reinterpret_cast<uintptr_t>(des) | 0x01), des->newV);
   } else {
     CAS1(des->a2, (reinterpret_cast<uintptr_t>(des) | 0x01), des->o2);
   }
@@ -44,10 +44,10 @@ void Complete (Descriptor *des) {
 
 uintptr_t RDCSSRead(atomic<uintptr_t> *address) {
   uintptr_t result;
-  //cout << "Hello" << endl;
+
   do {
-    result = atomic_load(address);// atomic load for value
-    //cout << result << endl;
+    result = atomic_load(address);
+
     if (isDescriptor(result))
       Complete(reinterpret_cast<Descriptor*>(result & ~0x01));
   } while (isDescriptor(result));
@@ -63,7 +63,7 @@ uintptr_t RDCSS(Descriptor *des) {
   do {
     result = CAS1(des->a2, des->o2, (reinterpret_cast<uintptr_t>(des) | 0x01));
     if (isDescriptor(result))
-      Complete(reinterpret_cast<Descriptor*>(result & ~0x01)); // May need to make result to uintptr_t
+      Complete(reinterpret_cast<Descriptor*>(result & ~0x01));
   } while (isDescriptor(result));
 
   if (result == des->o2)
@@ -73,14 +73,14 @@ uintptr_t RDCSS(Descriptor *des) {
 
 void controlTimer() {
     auto start = high_resolution_clock::now();
-    while (duration_cast<seconds>(high_resolution_clock::now() - start).count() < 10) {}
+    while (duration_cast<seconds>(high_resolution_clock::now() - start).count() < 75) {}
 
-    flag.store((uintptr_t)new bool(true)); // May need to cast to uintptr_t
+    flag.store((uintptr_t)new bool(true));
 }
 
 void populateRDCSS() {
-  //cout << "Flag: " << *(bool*)flag.load() << endl;
-  while(!*(bool*)atomic_load(&flag)) { // bool* may be neccessary but also not
+  while(!*(bool*)atomic_load(&flag)) {
+
     Descriptor* des = new Descriptor();
 
     des->a1 = &flag;
@@ -89,14 +89,8 @@ void populateRDCSS() {
     des->o1 = flag.load();
     des->o2 = RDCSSRead(des->a2);
 
-
     unsigned long *temp = new unsigned long(*(unsigned long*)des->o2 + 1);
-
     des->newV = (uintptr_t)temp;
-
-    /*cout << "des.a1 (" << des->a1 << ") des.a2 (" << des->a2 << ")" << endl;
-    cout << "des.o1 (" << des->o1 << ") des.o2 (" << des->o2 << ")" << endl;
-    cout << "des.newV (" << des->newV << ")" << endl;*/
 
     RDCSS(des);
   }
@@ -104,19 +98,16 @@ void populateRDCSS() {
 
 int main() {
 
-  vector<thread> thrs;
+  vector<thread> thrs(16);
   counter.store((uintptr_t)new unsigned long(0));
-  flag.store((uintptr_t)new bool(false)); // for o2 use RDCSSRead(counter address)
+  flag.store((uintptr_t)new bool(false));
 
-  uintptr_t ptr = 95645431;
-  //cout << isDescriptor(ptr) << " " << counter << " " << flag <<  endl;
-
-  thread test = thread(populateRDCSS);
-
-
+  for(int i = 0; i < 16; i++)
+    thrs[i] = thread(populateRDCSS);
   thread control = thread(controlTimer);
 
-  test.join();
+  for(int i = 0; i < 16; i++)
+    thrs[i].join();
   control.join();
 
   cout << "Counter: " << *(unsigned long*)counter.load() << endl;
