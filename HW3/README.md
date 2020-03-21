@@ -41,7 +41,7 @@ This paper provides the fundamental structure of the RDCSS with the psuedo code 
 
 I decided to use uintptr_t from the cstdint library to represent word_t since the pointer can represent multiple address and can manipulate different address with casting and reinterpret.
 
-For the descriptor struct and the atomic flags, in the RDCSS there are only two addresses that can be modified across the threads which is the control and data address. With the other values being the expected values, which are used in the CAS1. These uintptr_t must be placed as atomic so they can properly be loaded inside of the respective function.
+For the descriptor struct and the atomic flags, in the RDCSS there are only two addresses that can be modified across the threads which is the control and data address. With the other values being the expected values, which are used in the CAS1 (Retrieved from RDCSSRead for o2). These(a1/a2) uintptr_t must be placed as atomic so they can properly be loaded inside of the respective function.
 
 The uint_ptr used by the controlTimer() thread as well as the counter for the amount of operations, must be atomic to allow for all threads to safely read and modify the values without ruining other threads.
 
